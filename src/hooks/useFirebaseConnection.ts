@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
-import { getDatabase, ref, onValue } from "firebase/database";
-import app from "@/lib/firebase";
+import { ref, onValue } from "firebase/database";
+import { rtdb } from "@/lib/firebase";
 
 export function useFirebaseConnection() {
   const [status, setStatus] = useState<"connected" | "reconnecting" | "offline">("reconnecting");
 
   useEffect(() => {
     try {
-      const rtdb = getDatabase(app);
       const connectedRef = ref(rtdb, ".info/connected");
 
       const unsub = onValue(connectedRef, (snap) => {
@@ -16,7 +15,7 @@ export function useFirebaseConnection() {
 
       return () => unsub();
     } catch {
-      // If Realtime Database is not enabled, fall back to online/offline detection
+      // Fall back to online/offline detection if RTDB not available
       const handleOnline = () => setStatus("connected");
       const handleOffline = () => setStatus("offline");
 
