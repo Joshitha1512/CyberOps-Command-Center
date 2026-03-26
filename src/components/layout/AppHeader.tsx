@@ -1,9 +1,10 @@
-import { Wifi, WifiOff, RefreshCw, User, LogOut } from "lucide-react";
+import { Wifi, WifiOff, RefreshCw, User, LogOut, Shield } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { useRealtimeStatus } from "@/hooks/useCyberData";
+import { useFirebaseConnection } from "@/hooks/useFirebaseConnection";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 
 const statusConfig = {
   connected: { icon: Wifi, label: "CONNECTED", className: "text-cyber-green" },
@@ -12,10 +13,10 @@ const statusConfig = {
 };
 
 export function AppHeader() {
-  const status = useRealtimeStatus();
+  const status = useFirebaseConnection();
   const cfg = statusConfig[status];
   const StatusIcon = cfg.icon;
-  const { logout, user } = useAuth();
+  const { logout, user, role } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -34,7 +35,9 @@ export function AppHeader() {
         <div className="h-5 w-px bg-border" />
         <div className="flex items-center gap-2">
           <div className={`h-2 w-2 rounded-full ${status === "connected" ? "bg-cyber-green animate-pulse-glow" : status === "reconnecting" ? "bg-cyber-amber" : "bg-cyber-red"}`} />
-          <span className="text-[10px] font-mono tracking-wider text-muted-foreground">SYSTEM HEALTH: NOMINAL</span>
+          <span className="text-[10px] font-mono tracking-wider text-muted-foreground">
+            SYSTEM HEALTH: {status === "connected" ? "NOMINAL" : status === "offline" ? "DEGRADED" : "SYNCING"}
+          </span>
         </div>
       </div>
 
@@ -49,6 +52,9 @@ export function AppHeader() {
           <span className="text-[10px] font-mono tracking-wider text-muted-foreground truncate max-w-[120px]">
             {user?.email || "ADMIN"}
           </span>
+          <Badge variant="outline" className="text-[9px] font-mono px-1.5 py-0 uppercase">
+            {role}
+          </Badge>
         </div>
 
         <button
