@@ -1,11 +1,13 @@
-import { Server, ShieldAlert, AlertTriangle, Activity, Gauge, Bell } from "lucide-react";
+import { Server, ShieldAlert, AlertTriangle, Activity, Gauge, Bell, CheckCircle, Globe } from "lucide-react";
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, Line } from "recharts";
 import { KPICard } from "@/components/dashboard/KPICard";
 import { ChartCard } from "@/components/dashboard/ChartCard";
 import { ThreatRadar } from "@/components/dashboard/ThreatRadar";
 import { ThreatFilters } from "@/components/dashboard/ThreatFilters";
 import { DownloadReport } from "@/components/dashboard/DownloadReport";
-import { useAssets, useMitreMap, useKPIs, useTrafficTimeSeries } from "@/hooks/useCyberData";
+import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
+import { TimelinePanel } from "@/components/dashboard/TimelinePanel";
+import { useAssets, useKPIs, useTrafficTimeSeries } from "@/hooks/useCyberData";
 import { useFirestoreThreats } from "@/hooks/useFirestoreThreats";
 import { useMemo, useState } from "react";
 
@@ -31,14 +33,10 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 export default function DashboardPage() {
   const assets = useAssets(50);
-  const mitre = useMitreMap();
-  const { threats: firestoreThreats, totalThreats, criticalCount, highCount } = useFirestoreThreats();
+  const { threats: firestoreThreats, totalThreats, criticalCount, highCount, activeCount, resolvedCount, avgReputation, loading } = useFirestoreThreats();
   const timeSeries = useTrafficTimeSeries();
+  const kpis = useKPIs(assets, [], []);
 
-  // Use simulated threat logs for existing KPIs but overlay Firestore counts
-  const kpis = useKPIs(assets, [], mitre);
-
-  // Filters
   const [sevFilter, setSevFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
 
@@ -48,18 +46,6 @@ export default function DashboardPage() {
     if (typeFilter !== "all") result = result.filter((t) => t.threat_type === typeFilter);
     return result;
   }, [firestoreThreats, sevFilter, typeFilter]);
-
-  const riskDistribution = useMemo(() => {
-    const buckets = [
-      { range: "0-20", count: 0 }, { range: "21-40", count: 0 },
-      { range: "41-60", count: 0 }, { range: "61-80", count: 0 }, { range: "81-100", count: 0 },
-    ];
-    assets.forEach(a => {
-      const idx = Math.min(Math.floor(a.risk_score / 20), 4);
-      buckets[idx].count++;
-    });
-    return buckets;
-  }, [assets]);
 
   const severityDist = useMemo(() => {
     const counts = { Critical: 0, High: 0, Medium: 0, Low: 0 };
@@ -95,33 +81,29 @@ export default function DashboardPage() {
           <p className="text-sm text-muted-foreground font-mono">Real-time security posture overview</p>
         </div>
         <div className="flex items-center gap-3">
-          <ThreatFilters
-            severity={sevFilter}
-            onSeverityChange={setSevFilter}
-            threatType={typeFilter}
-            onThreatTypeChange={setTypeFilter}
-          />
-          <DownloadReport
-            threats={filteredThreats}
-            totalThreats={totalThreats}
-            criticalCount={criticalCount}
-            highCount={highCount}
-          />
+          <ThreatFilters severity={sevFilter} onSeverityChange={setSevFilter} threatType={typeFilter} onThreatTypeChange={setTypeFilter} />
+          <DownloadReport threats={filteredThreats} totalThreats={totalThreats} criticalCount={criticalCount} highCount={highCount} />
         </div>
       </div>
 
-      {/* KPIs — uses Firestore counts for threats */}
+      {/* KPIs */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
-        <KPICard title="Total Assets" value={kpis.totalAssets} icon={Server} variant="cyan" />
-        <KPICard title="High Risk" value={kpis.highRiskAssets} icon={AlertTriangle} variant="red" />
         <KPICard title="Total Threats" value={totalThreats} icon={ShieldAlert} variant="amber" />
+        <KPICard title="Active Threats" value={activeCount} icon={AlertTriangle} variant="red" />
+        <KPICard title="Resolved" value={resolvedCount} icon={CheckCircle} variant="green" />
         <KPICard title="Critical" value={criticalCount} icon={Activity} variant="red" />
-        <KPICard title="Avg Risk Score" value={kpis.avgRiskScore} icon={Gauge} variant="green" />
-        <KPICard title="High Severity" value={highCount} icon={Bell} variant="amber" />
+        <KPICard title="Avg Reputation" value={avgReputation} icon={Gauge} variant="cyan" />
+        <KPICard title="Top Country" value={countryDist[0]?.country || "—"} icon={Globe} variant="amber" />
       </div>
 
       {/* Threat Map */}
       <ThreatRadar threats={filteredThreats} />
+
+      {/* Activity Feed + Timeline */}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <ActivityFeed threats={filteredThreats} loading={loading} />
+        <TimelinePanel collectionName="logs" title="Security Timeline" />
+      </div>
 
       {/* Row 1: Traffic + Severity */}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
@@ -147,9 +129,7 @@ export default function DashboardPage() {
           <ResponsiveContainer width="100%" height={280}>
             <PieChart>
               <Pie data={severityDist} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={4} dataKey="value" stroke="none">
-                {severityDist.map((entry, i) => (
-                  <Cell key={i} fill={entry.color} />
-                ))}
+                {severityDist.map((entry, i) => <Cell key={i} fill={entry.color} />)}
               </Pie>
               <Tooltip content={<CustomTooltip />} />
             </PieChart>
@@ -167,21 +147,6 @@ export default function DashboardPage() {
 
       {/* Row 2 */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <ChartCard title="Asset Risk Distribution">
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={riskDistribution}>
-              <XAxis dataKey="range" tick={{ fontSize: 10, fill: "hsl(200,15%,55%)" }} tickLine={false} axisLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: "hsl(200,15%,55%)" }} tickLine={false} axisLine={false} />
-              <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="count" name="Assets" radius={[4, 4, 0, 0]}>
-                {riskDistribution.map((_, i) => (
-                  <Cell key={i} fill={[CHART_COLORS.green, CHART_COLORS.green, CHART_COLORS.amber, CHART_COLORS.red, CHART_COLORS.red][i]} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
         <ChartCard title="Top Threat Countries">
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={countryDist}>
@@ -197,15 +162,13 @@ export default function DashboardPage() {
           <ResponsiveContainer width="100%" height={220}>
             <PieChart>
               <Pie data={typeDist} cx="50%" cy="50%" outerRadius={80} dataKey="value" stroke="none" paddingAngle={2}>
-                {typeDist.map((_, i) => (
-                  <Cell key={i} fill={[CHART_COLORS.red, CHART_COLORS.amber, CHART_COLORS.violet, CHART_COLORS.cyan][i % 4]} />
-                ))}
+                {typeDist.map((_, i) => <Cell key={i} fill={[CHART_COLORS.red, CHART_COLORS.amber, CHART_COLORS.violet, CHART_COLORS.cyan][i % 4]} />)}
               </Pie>
               <Tooltip content={<CustomTooltip />} />
             </PieChart>
           </ResponsiveContainer>
           <div className="flex flex-wrap justify-center gap-2 mt-2">
-            {typeDist.map((o, i) => (
+            {typeDist.map((o) => (
               <span key={o.name} className="text-[10px] font-mono text-muted-foreground">{o.name}: {o.value}</span>
             ))}
           </div>
