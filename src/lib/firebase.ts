@@ -4,12 +4,12 @@ import { getFirestore } from "firebase/firestore";
 import { getDatabase } from "firebase/database";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBPbZwJ9Okk084S734NIBYKZJNUJ2ycM0I",
-  authDomain: "cyber-dashboard-124e4.firebaseapp.com",
-  projectId: "cyber-dashboard-124e4",
-  storageBucket: "cyber-dashboard-124e4.firebasestorage.app",
-  messagingSenderId: "919266433790",
-  appId: "1:919266433790:web:99b5ee537663f41d5b63af",
+  apiKey: "FIREBASE_API",
+  authDomain: "FIREBASE_AUTH_DOMAIN",
+  projectId: "FIREBASE_PROJECT_ID",
+  storageBucket: "FIREBASE_STORAGE_BUCKET",
+  messagingSenderId: "FIREBASE_MESSAGING_SENDER_ID",
+  appId: "FIREBASE_APP_ID",
 };
 
 const app = initializeApp(firebaseConfig);
