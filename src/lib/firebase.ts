@@ -4,7 +4,7 @@ import { getFirestore } from "firebase/firestore";
 import { getDatabase } from "firebase/database";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDBssBDZtLA_ZZdmdnzvhhixVx0DskS_Xo",
+  apiKey: "AIzaSyBPbZwJ9Okk084S734NIBYKZJNUJ2ycM0I",
   authDomain: "cyber-dashboard-124e4.firebaseapp.com",
   projectId: "cyber-dashboard-124e4",
   storageBucket: "cyber-dashboard-124e4.firebasestorage.app",
